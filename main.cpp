@@ -2,28 +2,35 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <cctype>
+#include <unordered_map>
 
 using namespace std;
 
 bool ANYMATCH = false;
 bool ANYERROR = false;
+unordered_map<char,bool> FLAGS{
+    {'I',false} // -i
+};
 
 void printLines(vector<pair<int,string>>& v,string& fileName);
+pair<string,vector<string>> parseInput(int argc,char** argv);
+string lower(const string& s);
 
 int main(int argc,char **argv){
-    if(argc == 1){
+    pair<string,vector<string>> parsedInput = parseInput(argc,argv);
+    string pattern = parsedInput.first;
+    vector<string> fileNames = parsedInput.second; 
+    if(pattern.empty() && fileNames.empty()){
         cerr<<"Error: Enter the pattern and file name(s)"<<endl;
         return 2;
     }
-    else if(argc == 2){
+    else if(fileNames.empty()){
         cerr<<"Error: Enter the file name(s)"<<endl;
         return 2;
     }
     else{
-        int fileNum = argc-2;
-        string pattern = argv[1];
-        for(int i=0;i<fileNum;i++){
-            string fileName = argv[i+2];
+        for(string fileName:fileNames){
             ifstream file(fileName);
             if(!file.is_open()) {
                 cerr<<"Failed to open: "<<fileName<<endl;
@@ -34,9 +41,8 @@ int main(int argc,char **argv){
             vector<pair<int,string>> lines;
             int lineNo = 1;
             while(getline(file,line)){
-                if(line.find(pattern) != string::npos){
+                if((FLAGS['I'] && lower(line).find(lower(pattern)) != string::npos) || (line.find(pattern) != string::npos))
                     lines.push_back({lineNo,line});
-                }
                 lineNo++;
             }
             printLines(lines,fileName);
@@ -54,4 +60,28 @@ void printLines(vector<pair<int,string>>& v,string& fileName){
             cout<<fileName<<":"<<p.first<<":"<<p.second<<"\n";
         }
     }
+}
+
+pair<string,vector<string>> parseInput(int argc,char** argv){
+    string pattern;
+    bool pattFound = false;
+    vector<string> fileNames;
+    for(int i = 1;i<argc;i++){
+        string arg = argv[i];
+        if(arg == "-i") FLAGS['I'] = true;
+        else if(!pattFound){
+            pattern = arg;
+            pattFound = true;
+        }
+        else fileNames.push_back(arg);
+    }
+    return {pattern,fileNames};
+}
+
+string lower(const string& s){
+    string out="";
+    for(char ch:s){
+        out += static_cast<char>(tolower(static_cast<unsigned char>(ch)));
+    }
+    return out;
 }
